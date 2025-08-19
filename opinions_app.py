@@ -1,13 +1,16 @@
-from datetime import datetime
+# what_to_watch/opinions_app.py
 
+from datetime import datetime
 from random import randrange
 
-from flask import Flask
+# Импортируем функцию render_template():
+from flask import Flask, render_template
 from flask_sqlalchemy import SQLAlchemy
 
-
 app = Flask(__name__)
+
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///db.sqlite3'
+
 db = SQLAlchemy(app)
 
 
@@ -21,14 +24,20 @@ class Opinion(db.Model):
 
 @app.route('/')
 def index_view():
-    # print(app.config)
     quantity = Opinion.query.count()
     if not quantity:
         return 'В базе данных мнений о фильмах нет.'
     offset_value = randrange(quantity)
+    # Извлекаем все записи, пропуская первые offset_value записей,
+    # и берём первую запись из получившегося набора:
     opinion = Opinion.query.offset(offset_value).first()
+    # Передаём в шаблон весь объект opinion:
+    return render_template('index.html', opinion=opinion)
 
-    return opinion.text
+
+@app.route('/add')
+def add_opinion_view():
+    return 'Страница в разработке!'
 
 
 if __name__ == '__main__':
