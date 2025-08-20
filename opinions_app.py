@@ -4,7 +4,7 @@ from datetime import datetime
 from random import randrange
 
 # Импортируем функцию render_template():
-from flask import Flask, redirect, render_template, url_for
+from flask import Flask, abort, flash, redirect, render_template, url_for
 from flask_sqlalchemy import SQLAlchemy
 
 from flask_wtf import FlaskForm
@@ -48,7 +48,7 @@ class OpinionForm(FlaskForm):
 def index_view():
     quantity = Opinion.query.count()
     if not quantity:
-        return 'В базе данных мнений о фильмах нет.'
+        abort(500)
     offset_value = randrange(quantity)
     opinion = Opinion.query.offset(offset_value).first()
     return render_template('opinion.html', opinion=opinion)
@@ -58,9 +58,13 @@ def index_view():
 def add_opinion_view():
     form = OpinionForm()
     if form.validate_on_submit():
+        text = form.text.data
+        if Opinion.query.filter_by(text=text).first() is not None:
+            flash('Такое мнение уже было оставлено ранее!')
+            return render_template('add_opinion.html', form=form)
         opinion = Opinion(
             title=form.title.data,
-            text=form.text.data,
+            text=text,
             source=form.source.data
         )
         db.session.add(opinion)
@@ -73,6 +77,19 @@ def add_opinion_view():
 def opinion_view(id):
     opinion = Opinion.query.get_or_404(id)
     return render_template('opinion.html', opinion=opinion)
+
+
+@app.errorhandler(500)
+def internal_error(error):
+    db.session.rollback()
+    return render_template('500.html'), 500
+
+
+@app.errorhandler(404)
+def page_not_found(error):
+    # При ошибке 404 в качестве ответа вернётся страница, созданная
+    # на основе шаблона 404.html, и код HTTP-ответа 404:
+    return render_template('404.html'), 404
 
 
 if __name__ == '__main__':
